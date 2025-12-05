@@ -1,121 +1,124 @@
-Project: "Void Engine" - Custom C++ 3D Physics Simulation
+# Project: "Void Engine" — Custom C++ 3D Physics Simulation
 
-Goal: Build a 3D gravitational physics engine from scratch without using OpenGL/DirectX matrices, utilizing SFML only for the final 2D rasterization.
+**Goal:** Build a 3D gravitational physics engine from scratch without using OpenGL/DirectX matrices, utilizing SFML only for the final 2D rasterization.
 
-Phase 1: The Mathematical Foundation (The Vec3 Class)
+---
 
-Time Estimate: 1-2 Days
+## Phase 1: The Mathematical Foundation (The `Vec3` Class)
 
-Before you can render a single pixel, you need a mathematical object to represent 3D space. You cannot use SFML's sf::Vector2f for this.
+**Time Estimate:** 1-2 Days
 
-Key Objectives:
+Before you can render a single pixel, you need a mathematical object to represent 3D space.  
+You cannot use SFML's `sf::Vector2f` for this.
 
-Create a class/struct Vec3.
+### Key Objectives
 
-Implement Operator Overloading for elegant syntax:
+- **Create a class/struct `Vec3`.**
+- **Implement operator overloading for elegant syntax:**
+  - `+`, `-`, `*` (scalar multiplication), `/`
+  - `+=`, `-=`
+- **Implement vector math functions:**
+  - `magnitude()`: Returns the length of the vector:  
+    \[
+    \sqrt{x^2 + y^2 + z^2}
+    \]
+  - `normalize()`: Returns a vector of length 1 (essential for gravity direction).
+  - `dot(Vec3)`: Dot product.
+  - `cross(Vec3)`: Cross product (Essential for calculating orbital velocity vectors).
 
-+, -, * (Scalar multiplication), /.
+---
 
-+=, -= (Compound assignment).
+## Phase 2: The "Camera" & Projection Pipeline
 
-Implement Vector Math functions:
+**Time Estimate:** 2 Days
 
-magnitude(): Returns the length of the vector ($\sqrt{x^2 + y^2 + z^2}$).
+This is the engine core. You must write the function that takes a star at `(100, 50, 500)` and tells SFML where to put it on your 2D screen.
 
-normalize(): Returns a vector of length 1 (essential for gravity direction).
+### The Projection Formula (Perspective)
 
-dot(Vec3): Dot product.
+\[
+x_{screen} = \frac{x_{world} \times \text{focal\_length}}{z_{world} + \text{camera\_offset}} + \text{screen\_center\_x}
+\]
 
-cross(Vec3): Cross product (Essential for calculating orbital velocity vectors).
+\[
+y_{screen} = \frac{y_{world} \times \text{focal\_length}}{z_{world} + \text{camera\_offset}} + \text{screen\_center\_y}
+\]
 
-Phase 2: The "Camera" & Projection Pipeline
+### Key Objectives
 
-Time Estimate: 2 Days
+- Define a `Camera` struct with a position `(x, y, z)`.
+- Create a function `project(Vec3 point3D)` that returns an `sf::Vector2f`.
+- **Debug Test:** Place a single static point at `(0, 0, 100)` and print its 2D projected coordinates to the console.
 
-This is the engine core. You must write the function that takes a star at (100, 50, 500) and tells SFML where to put it on your 2D screen.
+---
 
-The Projection Formula (Perspective):
+## Phase 3: The Physics System (Newtonian Gravity)
 
+**Time Estimate:** 2-3 Days
 
-$$x_{screen} = \frac{x_{world} \times \text{focal\_length}}{z_{world} + \text{camera\_offset}} + \text{screen\_center\_x}$$
+Simulate an accretion disk (a black hole with matter swirling around it).
 
-$$y_{screen} = \frac{y_{world} \times \text{focal\_length}}{z_{world} + \text{camera\_offset}} + \text{screen\_center\_y}$$
+### Key Objectives
 
-Key Objectives:
+- **Particle Struct:** Needs `Vec3 position`, `Vec3 velocity`, `sf::Color color`.
+- **Initialization:**
+  - Spawn 2,000 particles.
+  - Position them in a random ring around `(0, 0, 0)`.
+- **Crucial Math:**  
+  Give them an initial velocity tangent to the center so they orbit instead of falling in immediately:
+  -  
+    \[
+    \text{Velocity} = \text{CrossProduct}(\text{Position}, \text{UpVector})
+    \]
+- **The Update Loop:**
+  - Calculate vector from particle to center.
+  - Apply gravity:  
+    \[
+    F = \frac{G \cdot M}{r^2}
+    \]
+  - Update velocity:  
+    `velocity += force`
+  - Update position:  
+    `position += velocity`
 
-Define a Camera struct with a position (x, y, z).
+---
 
-Create a function project(Vec3 point3D) that returns an sf::Vector2f.
+## Phase 4: Rendering & Optimization (Vertex Arrays)
 
-Debug Test: Place a single static point at (0, 0, 100) and print its 2D projected coordinates to the console.
+**Time Estimate:** 2 Days
 
-Phase 3: The Physics System (Newtonian Gravity)
+If you draw 2,000 separate `sf::CircleShape` objects, your integrated graphics will choke.  
+You must use a vertex array.
 
-Time Estimate: 2-3 Days
+### Key Objectives
 
-Now we spawn particles. We will simulate an Accretion Disk (a black hole with matter swirling around it).
+- **Vertex Array:** Use `sf::VertexArray` with type `sf::Points`.
+- **The "Z-Sorting" Problem (Depth):**
+  - In 3D, things far away must be drawn before things close to the camera.
+  - **Algorithm:** Sort your list of particles based on their z coordinate every frame ("Painter's Algorithm").
+- **Visual Polish:**
+  - Map opacity (alpha) to z depth (stars fade out as they get further away).
+  - Map color to velocity (fast stars = blue, slow stars = red).
 
-Key Objectives:
+---
 
-Particle Struct: Needs Vec3 position, Vec3 velocity, sf::Color color.
+## Phase 5: Interaction (Rotation Matrices)
 
-Initialization:
+**Time Estimate:** 2 Days
 
-Spawn 2,000 particles.
+The simulation is boring if the camera is stuck.  
+We need to rotate the "world" around the camera to simulate looking around.
 
-Position them in a random ring around (0,0,0).
+### Key Objectives
 
-Crucial Math: Give them an initial velocity tangent to the center so they orbit instead of falling in immediately.
+- **Implement a rotation matrix function for Y-axis rotation:**
+  \[
+  x_{new} = x \cdot \cos(\theta) - z \cdot \sin(\theta)
+  \]
+  \[
+  z_{new} = x \cdot \sin(\theta) + z \cdot \cos(\theta)
+  \]
+- Bind arrow keys to increase/decrease the angle \(\theta\).
+- Apply this rotation to every particle before the projection step.
 
-$Velocity = \text{CrossProduct}(\text{Position}, \text{UpVector})$.
-
-The Update Loop:
-
-Calculate vector from Particle to Center.
-
-Apply Gravity: $F = \frac{G \cdot M}{r^2}$.
-
-Update Velocity: velocity += force.
-
-Update Position: position += velocity.
-
-Phase 4: Rendering & Optimization (Vertex Arrays)
-
-Time Estimate: 2 Days
-
-If you draw 2,000 separate sf::CircleShape objects, your integrated graphics will choke. We must use a Vertex Array.
-
-Key Objectives:
-
-Vertex Array: Use sf::VertexArray with type sf::Points.
-
-The "Z-Sorting" Problem (Depth):
-
-In 3D, things far away must be drawn before things close to the camera.
-
-Algorithm: Sort your list of Particles based on their z coordinate every frame (Painter's Algorithm).
-
-Visual Polish:
-
-Map opacity (alpha) to z depth (stars fade out as they get further away).
-
-Map color to velocity (fast stars = blue, slow stars = red).
-
-Phase 5: Interaction (Rotation Matrices)
-
-Time Estimate: 2 Days
-
-The simulation is boring if the camera is stuck. We need to rotate the "world" around the camera to simulate looking around.
-
-Key Objectives:
-
-Implement a Rotation Matrix function for Y-axis rotation:
-
-
-$$x_{new} = x \cdot \cos(\theta) - z \cdot \sin(\theta)$$
-
-$$z_{new} = x \cdot \sin(\theta) + z \cdot \cos(\theta)$$
-
-Bind Arrow Keys to increase/decrease the angle $\theta$.
-
-Apply this rotation to every particle before the projection step.
+---
